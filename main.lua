@@ -14,8 +14,12 @@ if PlayerGui:FindFirstChild("ScriptA") then
 	PlayerGui.ScriptA:Destroy()
 end
 
--- Global Auto Weight Control State
+-- Global Auto Farm States
 getgenv().AutoWeight = false
+getgenv().AutoPushups = false
+getgenv().AutoSitups = false
+getgenv().AutoPunch = false
+getgenv().AutoHandstands = false
 
 -- Helper Function: Abbreviate Large Numbers
 local function formatNumber(value)
@@ -448,7 +452,7 @@ end
 
 setupHomeTab(contentFrames["Home"])
 
--- 4. MAIN TAB: Auto Weight & Farming Utilities
+-- 4. MAIN TAB: Auto Farming Utilities (Weight, Pushups, Situps, Punch, Handstands)
 local function setupMainTab(mainFrame)
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "MainScroll"
@@ -466,9 +470,9 @@ local function setupMainTab(mainFrame)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = scroll
 
-	local function createCard(name, order)
+	local function createFarmToggle(title, genvKey, order)
 		local card = Instance.new("Frame")
-		card.Name = name
+		card.Name = genvKey .. "Card"
 		card.Size = UDim2.new(1, -6, 0, 42)
 		card.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 		card.BackgroundTransparency = 0.3
@@ -484,76 +488,87 @@ local function setupMainTab(mainFrame)
 		stroke.Thickness = 1
 		stroke.Parent = card
 
-		return card
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(0.5, 0, 1, 0)
+		label.Position = UDim2.new(0, 10, 0, 0)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.SourceSansBold
+		label.Text = title .. ":"
+		label.TextColor3 = Color3.fromRGB(240, 240, 240)
+		label.TextSize = 14
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = card
+
+		local toggleBtn = Instance.new("TextButton")
+		toggleBtn.Name = genvKey .. "Toggle"
+		toggleBtn.Size = UDim2.new(0.38, 0, 0.65, 0)
+		toggleBtn.Position = UDim2.new(0.58, 0, 0.175, 0)
+		toggleBtn.BackgroundColor3 = getgenv()[genvKey] and Color3.fromRGB(35, 150, 35) or Color3.fromRGB(150, 35, 35)
+		toggleBtn.Font = Enum.Font.SourceSansBold
+		toggleBtn.Text = getgenv()[genvKey] and "ON" or "OFF"
+		toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		toggleBtn.TextSize = 13
+		toggleBtn.Parent = card
+
+		local toggleCorner = Instance.new("UICorner")
+		toggleCorner.CornerRadius = UDim.new(0, 4)
+		toggleCorner.Parent = toggleBtn
+
+		toggleBtn.MouseButton1Click:Connect(function()
+			getgenv()[genvKey] = not getgenv()[genvKey]
+			if getgenv()[genvKey] then
+				toggleBtn.Text = "ON"
+				toggleBtn.BackgroundColor3 = Color3.fromRGB(35, 150, 35)
+			else
+				toggleBtn.Text = "OFF"
+				toggleBtn.BackgroundColor3 = Color3.fromRGB(150, 35, 35)
+			end
+		end)
 	end
 
-	-- Auto Weight Card
-	local weightCard = createCard("AutoWeightCard", 1)
-
-	local weightLabel = Instance.new("TextLabel")
-	weightLabel.Size = UDim2.new(0.5, 0, 1, 0)
-	weightLabel.Position = UDim2.new(0, 10, 0, 0)
-	weightLabel.BackgroundTransparency = 1
-	weightLabel.Font = Enum.Font.SourceSansBold
-	weightLabel.Text = "Auto Farm Weight:"
-	weightLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-	weightLabel.TextSize = 14
-	weightLabel.TextXAlignment = Enum.TextXAlignment.Left
-	weightLabel.Parent = weightCard
-
-	local weightToggle = Instance.new("TextButton")
-	weightToggle.Name = "WeightToggle"
-	weightToggle.Size = UDim2.new(0.38, 0, 0.65, 0)
-	weightToggle.Position = UDim2.new(0.58, 0, 0.175, 0)
-	weightToggle.BackgroundColor3 = Color3.fromRGB(150, 35, 35)
-	weightToggle.Font = Enum.Font.SourceSansBold
-	weightToggle.Text = "OFF"
-	weightToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-	weightToggle.TextSize = 13
-	weightToggle.Parent = weightCard
-
-	local weightToggleCorner = Instance.new("UICorner")
-	weightToggleCorner.CornerRadius = UDim.new(0, 4)
-	weightToggleCorner.Parent = weightToggle
-
-	weightToggle.MouseButton1Click:Connect(function()
-		getgenv().AutoWeight = not getgenv().AutoWeight
-		if getgenv().AutoWeight then
-			weightToggle.Text = "ON"
-			weightToggle.BackgroundColor3 = Color3.fromRGB(35, 150, 35)
-		else
-			weightToggle.Text = "OFF"
-			weightToggle.BackgroundColor3 = Color3.fromRGB(150, 35, 35)
-		end
-	end)
+	-- Create Farming Toggles
+	createFarmToggle("Auto Farm Weight", "AutoWeight", 1)
+	createFarmToggle("Auto Farm Pushups", "AutoPushups", 2)
+	createFarmToggle("Auto Farm Situps", "AutoSitups", 3)
+	createFarmToggle("Auto Farm Punch", "AutoPunch", 4)
+	createFarmToggle("Auto Farm Handstands", "AutoHandstands", 5)
 end
 
 setupMainTab(contentFrames["Main"])
 
--- Auto Weight Background Execution Thread
+-- Auto Farm Background Execution Loop
 task.spawn(function()
 	while task.wait(0.1) do
-		if getgenv().AutoWeight then
-			pcall(function()
-				local char = LocalPlayer.Character
-				if char then
-					local hum = char:FindFirstChildOfClass("Humanoid")
-					local backpack = LocalPlayer:FindFirstChild("Backpack")
+		local char = LocalPlayer.Character
+		if char then
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			local backpack = LocalPlayer:FindFirstChild("Backpack")
+			local event = LocalPlayer:FindFirstChild("muscleEvent") or game:GetService("ReplicatedStorage"):FindFirstChild("muscleEvent")
 
-					local tool = char:FindFirstChild("Weight") or (backpack and backpack:FindFirstChild("Weight"))
-					if tool then
-						if tool.Parent == backpack and hum then
-							hum:EquipTool(tool)
+			local farmMapping = {
+				{State = getgenv().AutoWeight, Tool = "Weight"},
+				{State = getgenv().AutoPushups, Tool = "Pushups"},
+				{State = getgenv().AutoSitups, Tool = "Situps"},
+				{State = getgenv().AutoPunch, Tool = "Punch"},
+				{State = getgenv().AutoHandstands, Tool = "Handstands"}
+			}
+
+			for _, farm in ipairs(farmMapping) do
+				if farm.State then
+					pcall(function()
+						local tool = char:FindFirstChild(farm.Tool) or (backpack and backpack:FindFirstChild(farm.Tool))
+						if tool then
+							if tool.Parent == backpack and hum then
+								hum:EquipTool(tool)
+							end
+							tool:Activate()
 						end
-						tool:Activate()
-					end
-
-					local event = LocalPlayer:FindFirstChild("muscleEvent") or game:GetService("ReplicatedStorage"):FindFirstChild("muscleEvent")
-					if event then
-						event:FireServer("rep")
-					end
+						if event then
+							event:FireServer("rep")
+						end
+					end)
 				end
-			end)
+			end
 		end
 	end
 end)
