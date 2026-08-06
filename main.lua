@@ -279,28 +279,30 @@ local function setupStatusTab(statusFrame)
 		statLabels[statName] = createStatCard(statName .. "Card", statName .. ": 0", 10 + i)
 	end
 
-	-- Search function across common Roblox stat storage locations
+	-- Case-Insensitive Stat Searcher across LocalPlayer and leaderstats
 	local function findStatObject(statName)
+		local targetLower = string.lower(statName)
 		local locations = {
+			LocalPlayer, -- Checked first for direct children like LocalPlayer.agility, LocalPlayer.gems, etc.
 			LocalPlayer:FindFirstChild("leaderstats"),
 			LocalPlayer:FindFirstChild("stats"),
 			LocalPlayer:FindFirstChild("PrivateStats"),
-			LocalPlayer:FindFirstChild("Data"),
-			LocalPlayer
+			LocalPlayer:FindFirstChild("Data")
 		}
 
 		for _, loc in ipairs(locations) do
 			if loc then
-				local obj = loc:FindFirstChild(statName)
-				if obj and (obj:IsA("ValueBase") or obj:IsA("StringValue")) then
-					return obj
+				for _, child in ipairs(loc:GetChildren()) do
+					if string.lower(child.Name) == targetLower and (child:IsA("ValueBase") or child:IsA("StringValue")) then
+						return child
+					end
 				end
 			end
 		end
 		return nil
 	end
 
-	-- Bind values and apply human-readable number formatting
+	-- Bind values and update UI when stat values change
 	local function bindStat(statName)
 		local statObj = findStatObject(statName)
 		local label = statLabels[statName]
@@ -323,7 +325,7 @@ local function setupStatusTab(statusFrame)
 
 	task.spawn(initAllStats)
 
-	-- Rescan if leaderstats load in late
+	-- Rescan if stat values or leaderstats load in late
 	LocalPlayer.ChildAdded:Connect(function()
 		task.wait(0.5)
 		initAllStats()
