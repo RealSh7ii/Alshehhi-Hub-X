@@ -553,21 +553,14 @@ task.spawn(function()
 	end
 end)
 
--- Background Execution Task (Auto Walk Logic - Fixed Frame-by-Frame Movement)
-local walkDir = 1
-local lastSwitch = os.clock()
-
-RunService.Heartbeat:Connect(function()
+-- Background Execution Task (Auto Walk - Camera-relative forward movement, exactly like holding W)
+RunService.RenderStepped:Connect(function()
 	if getgenv().AutoWalk and not getgenv().LockPosition then
 		local char = LocalPlayer.Character
 		if char then
 			local hum = char:FindFirstChildOfClass("Humanoid")
 			if hum and hum.Health > 0 then
-				if os.clock() - lastSwitch >= 2.5 then
-					walkDir = -walkDir
-					lastSwitch = os.clock()
-				end
-				hum:Move(Vector3.new(walkDir, 0, 0), false)
+				hum:Move(Vector3.new(0, 0, -1), true)
 			end
 		end
 	end
