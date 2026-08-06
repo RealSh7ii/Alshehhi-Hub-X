@@ -14,7 +14,7 @@ if PlayerGui:FindFirstChild("ScriptA") then
 	PlayerGui.ScriptA:Destroy()
 end
 
--- Global Auto Farm & Utility States
+-- Global Auto Farm, Rebirth, Killer & Utility States
 getgenv().AutoWeight = false
 getgenv().AutoPushups = false
 getgenv().AutoSitups = false
@@ -22,6 +22,11 @@ getgenv().AutoPunch = false
 getgenv().AutoHandstands = false
 getgenv().AutoWalk = false
 getgenv().LockPosition = false
+getgenv().AutoRebirth = false
+getgenv().TargetRebirths = 0
+getgenv().AutoKillAll = false
+getgenv().OnlyKillOne = false
+getgenv().KillWhitelist = {}
 
 -- Color Palette Constants (Strictly Black & White)
 local C_BLACK = Color3.fromRGB(0, 0, 0)
@@ -53,6 +58,29 @@ local function formatNumber(value)
 		local formatted = string.format("%.2f", absNum):gsub("%.?0+$", "")
 		return sign .. formatted .. suffixes[tier]
 	end
+end
+
+-- Helper Function: Fetch Player Stats Safely
+local function getStatValue(statName)
+	local targetLower = string.lower(statName)
+	local locations = {
+		LocalPlayer,
+		LocalPlayer:FindFirstChild("leaderstats"),
+		LocalPlayer:FindFirstChild("stats"),
+		LocalPlayer:FindFirstChild("PrivateStats"),
+		LocalPlayer:FindFirstChild("Data")
+	}
+
+	for _, loc in ipairs(locations) do
+		if loc then
+			for _, child in ipairs(loc:GetChildren()) do
+				if string.lower(child.Name) == targetLower and (child:IsA("ValueBase") or child:IsA("StringValue")) then
+					return tonumber(child.Value) or 0
+				end
+			end
+		end
+	end
+	return 0
 end
 
 -- 1. ScreenGui Setup
@@ -95,7 +123,7 @@ TitleText.Size = UDim2.new(0.72, 0, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
 TitleText.Font = Enum.Font.SourceSansBold
-TitleText.Text = "Alshehhi Hub X  v1.1.0  |  Credits: Rashed Ahmed Alshehhi"
+TitleText.Text = "Alshehhi Hub X  v1.2.0  |  Credits: Rashed Ahmed Alshehhi"
 TitleText.TextColor3 = C_WHITE
 TitleText.TextSize = 14
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
@@ -516,6 +544,263 @@ end
 
 setupMainTab(contentFrames["Main"])
 
+-- 5. REBIRTHS TAB: Auto Rebirth & Target System
+local function setupRebirthsTab(rebirthFrame)
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "RebirthsScroll"
+	scroll.Size = UDim2.new(1, 0, 1, -32)
+	scroll.Position = UDim2.new(0, 0, 0, 32)
+	scroll.BackgroundTransparency = 1
+	scroll.ScrollBarThickness = 4
+	scroll.ScrollBarImageColor3 = C_BORDER_DIM
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.Parent = rebirthFrame
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = scroll
+
+	-- Target Rebirths Input Card
+	local card = Instance.new("Frame")
+	card.Size = UDim2.new(1, -6, 0, 42)
+	card.BackgroundColor3 = C_CARD_BG
+	card.BackgroundTransparency = 0.2
+	card.LayoutOrder = 1
+	card.Parent = scroll
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = card
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = C_BORDER_DIM
+	stroke.Thickness = 1
+	stroke.Parent = card
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.55, 0, 1, 0)
+	label.Position = UDim2.new(0, 10, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.SourceSansBold
+	label.Text = "Target Rebirths:"
+	label.TextColor3 = C_WHITE
+	label.TextSize = 14
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = card
+
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(0.35, 0, 0.65, 0)
+	box.Position = UDim2.new(0.61, 0, 0.175, 0)
+	box.BackgroundColor3 = C_BLACK
+	box.Font = Enum.Font.SourceSansBold
+	box.PlaceholderText = "Infinite (0)"
+	box.Text = ""
+	box.TextColor3 = C_WHITE
+	box.TextSize = 13
+	box.Parent = card
+
+	local boxCorner = Instance.new("UICorner")
+	boxCorner.CornerRadius = UDim.new(0, 4)
+	boxCorner.Parent = box
+
+	local boxStroke = Instance.new("UIStroke")
+	boxStroke.Color = C_BORDER_DIM
+	boxStroke.Thickness = 1
+	boxStroke.Parent = box
+
+	box.FocusLost:Connect(function()
+		local num = tonumber(box.Text)
+		getgenv().TargetRebirths = num or 0
+	end)
+
+	-- Auto Rebirth Toggle
+	createToggleCard(scroll, "Auto Rebirth", getgenv().AutoRebirth, function(state)
+		getgenv().AutoRebirth = state
+	end, 2)
+end
+
+setupRebirthsTab(contentFrames["Rebirths"])
+
+-- 6. KILLER TAB: Auto Kill, Only 1 Person & Dynamic Whitelist
+local function setupKillerTab(killerFrame)
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "KillerScroll"
+	scroll.Size = UDim2.new(1, 0, 1, -32)
+	scroll.Position = UDim2.new(0, 0, 0, 32)
+	scroll.BackgroundTransparency = 1
+	scroll.ScrollBarThickness = 4
+	scroll.ScrollBarImageColor3 = C_BORDER_DIM
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.Parent = killerFrame
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = scroll
+
+	-- Auto Kill Toggle
+	createToggleCard(scroll, "Auto Kill All", getgenv().AutoKillAll, function(state)
+		getgenv().AutoKillAll = state
+	end, 1)
+
+	-- Only Kill 1 Person Toggle
+	createToggleCard(scroll, "Only Kill 1 Person", getgenv().OnlyKillOne, function(state)
+		getgenv().OnlyKillOne = state
+	end, 2)
+
+	-- Whitelist Section Header Card
+	local headerCard = Instance.new("Frame")
+	headerCard.Size = UDim2.new(1, -6, 0, 30)
+	headerCard.BackgroundColor3 = C_CARD_BG
+	headerCard.BackgroundTransparency = 0.2
+	headerCard.LayoutOrder = 3
+	headerCard.Parent = scroll
+
+	local hCorner = Instance.new("UICorner")
+	hCorner.CornerRadius = UDim.new(0, 6)
+	hCorner.Parent = headerCard
+
+	local hStroke = Instance.new("UIStroke")
+	hStroke.Color = C_BORDER_DIM
+	hStroke.Thickness = 1
+	hStroke.Parent = headerCard
+
+	local hLabel = Instance.new("TextLabel")
+	hLabel.Size = UDim2.new(1, -16, 1, 0)
+	hLabel.Position = UDim2.new(0, 8, 0, 0)
+	hLabel.BackgroundTransparency = 1
+	hLabel.Font = Enum.Font.SourceSansBold
+	hLabel.Text = "Player Whitelist (ON = Safe / Whitelisted):"
+	hLabel.TextColor3 = C_WHITE
+	hLabel.TextSize = 13
+	hLabel.TextXAlignment = Enum.TextXAlignment.Left
+	hLabel.Parent = headerCard
+
+	-- Players List Container Frame
+	local playerContainer = Instance.new("Frame")
+	playerContainer.Size = UDim2.new(1, -6, 0, 180)
+	playerContainer.BackgroundColor3 = C_CARD_BG
+	playerContainer.BackgroundTransparency = 0.2
+	playerContainer.LayoutOrder = 4
+	playerContainer.Parent = scroll
+
+	local pcCorner = Instance.new("UICorner")
+	pcCorner.CornerRadius = UDim.new(0, 6)
+	pcCorner.Parent = playerContainer
+
+	local pcStroke = Instance.new("UIStroke")
+	pcStroke.Color = C_BORDER_DIM
+	pcStroke.Thickness = 1
+	pcStroke.Parent = playerContainer
+
+	local playerScroll = Instance.new("ScrollingFrame")
+	playerScroll.Name = "PlayerListScroll"
+	playerScroll.Size = UDim2.new(1, -8, 1, -8)
+	playerScroll.Position = UDim2.new(0, 4, 0, 4)
+	playerScroll.BackgroundTransparency = 1
+	playerScroll.ScrollBarThickness = 3
+	playerScroll.ScrollBarImageColor3 = C_BORDER_DIM
+	playerScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	playerScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	playerScroll.Parent = playerContainer
+
+	local pListLayout = Instance.new("UIListLayout")
+	pListLayout.Padding = UDim.new(0, 4)
+	pListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	pListLayout.Parent = playerScroll
+
+	local function refreshPlayerList()
+		for _, child in ipairs(playerScroll:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+
+		local orderIdx = 1
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= LocalPlayer then
+				local row = Instance.new("Frame")
+				row.Size = UDim2.new(1, -4, 0, 36)
+				row.BackgroundColor3 = C_BLACK
+				row.BackgroundTransparency = 0.4
+				row.LayoutOrder = orderIdx
+				row.Parent = playerScroll
+
+				local rCorner = Instance.new("UICorner")
+				rCorner.CornerRadius = UDim.new(0, 4)
+				rCorner.Parent = row
+
+				local rStroke = Instance.new("UIStroke")
+				rStroke.Color = C_BORDER_DIM
+				rStroke.Thickness = 1
+				rStroke.Parent = row
+
+				local nameLbl = Instance.new("TextLabel")
+				nameLbl.Size = UDim2.new(0.6, 0, 1, 0)
+				nameLbl.Position = UDim2.new(0, 8, 0, 0)
+				nameLbl.BackgroundTransparency = 1
+				nameLbl.Font = Enum.Font.SourceSansBold
+				nameLbl.Text = plr.Name
+				nameLbl.TextColor3 = C_WHITE
+				nameLbl.TextSize = 13
+				nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+				nameLbl.Parent = row
+
+				local wlBtn = Instance.new("TextButton")
+				wlBtn.Size = UDim2.new(0.32, 0, 0.7, 0)
+				wlBtn.Position = UDim2.new(0.66, 0, 0.15, 0)
+				wlBtn.Font = Enum.Font.SourceSansBold
+				wlBtn.TextSize = 12
+				wlBtn.Parent = row
+
+				local wCorner = Instance.new("UICorner")
+				wCorner.CornerRadius = UDim.new(0, 4)
+				wCorner.Parent = wlBtn
+
+				local wStroke = Instance.new("UIStroke")
+				wStroke.Thickness = 1
+				wStroke.Parent = wlBtn
+
+				local isWhitelisted = getgenv().KillWhitelist[plr.UserId] == true
+
+				local function updateWlStyle()
+					if isWhitelisted then
+						wlBtn.Text = "WHITELISTED"
+						wlBtn.BackgroundColor3 = C_WHITE
+						wlBtn.TextColor3 = C_BLACK
+						wStroke.Color = C_WHITE
+					else
+						wlBtn.Text = "TARGET"
+						wlBtn.BackgroundColor3 = C_BLACK
+						wlBtn.TextColor3 = C_MUTED
+						wStroke.Color = C_BORDER_DIM
+					end
+				end
+
+				updateWlStyle()
+
+				wlBtn.MouseButton1Click:Connect(function()
+					isWhitelisted = not isWhitelisted
+					getgenv().KillWhitelist[plr.UserId] = isWhitelisted
+					updateWlStyle()
+				end)
+
+				orderIdx += 1
+			end
+		end
+	end
+
+	refreshPlayerList()
+
+	Players.PlayerAdded:Connect(refreshPlayerList)
+	Players.PlayerRemoving:Connect(refreshPlayerList)
+end
+
+setupKillerTab(contentFrames["Killer"])
+
 -- Background Execution Task (Farming Tools)
 task.spawn(function()
 	while task.wait(0.1) do
@@ -547,6 +832,94 @@ task.spawn(function()
 							event:FireServer("rep")
 						end
 					end)
+				end
+			end
+		end
+	end
+end)
+
+-- Background Execution Task (Auto Rebirth with Target Support)
+task.spawn(function()
+	while task.wait(0.2) do
+		if getgenv().AutoRebirth then
+			pcall(function()
+				local currentRebirths = getStatValue("Rebirths")
+				local target = getgenv().TargetRebirths or 0
+
+				if target > 0 and currentRebirths >= target then
+					getgenv().AutoRebirth = false
+					return
+				end
+
+				local rebirthRemote = game:GetService("ReplicatedStorage"):FindFirstChild("rebirthEvent") or game:GetService("ReplicatedStorage"):FindFirstChild("RebirthEvent")
+				if rebirthRemote then
+					rebirthRemote:FireServer()
+				end
+			end)
+		end
+	end
+end)
+
+-- Background Execution Task (Auto Kill System with Whitelist & Only 1 Person Mode)
+task.spawn(function()
+	while task.wait(0.2) do
+		if getgenv().AutoKillAll then
+			local char = LocalPlayer.Character
+			if char and char:FindFirstChild("HumanoidRootPart") then
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				local backpack = LocalPlayer:FindFirstChild("Backpack")
+				local punchTool = char:FindFirstChild("Punch") or (backpack and backpack:FindFirstChild("Punch"))
+
+				if punchTool and punchTool.Parent == backpack and hum then
+					hum:EquipTool(punchTool)
+				end
+
+				-- Find a valid target player not in whitelist
+				local targetPlayer = nil
+				for _, plr in ipairs(Players:GetPlayers()) do
+					if plr ~= LocalPlayer and not getgenv().KillWhitelist[plr.UserId] then
+						local pChar = plr.Character
+						if pChar and pChar:FindFirstChild("HumanoidRootPart") and pChar:FindFirstChildOfClass("Humanoid") then
+							local pHum = pChar:FindFirstChildOfClass("Humanoid")
+							if pHum.Health > 0 then
+								targetPlayer = plr
+								break
+							end
+						end
+					end
+				end
+
+				if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+					local targetRoot = targetPlayer.Character.HumanoidRootPart
+					local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+					local myRoot = char.HumanoidRootPart
+
+					-- Teleport close and attack
+					myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 2)
+					myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+
+					if punchTool then
+						pcall(function()
+							punchTool:Activate()
+						end)
+					end
+
+					local event = LocalPlayer:FindFirstChild("muscleEvent") or game:GetService("ReplicatedStorage"):FindFirstChild("muscleEvent")
+					if event then
+						pcall(function()
+							event:FireServer("punch")
+							event:FireServer("rep")
+						end)
+					end
+
+					-- Check if target died
+					if targetHum.Health <= 0 then
+						if getgenv().OnlyKillOne then
+							getgenv().AutoKillAll = false
+							getgenv().OnlyKillOne = false
+							break
+						end
+					end
 				end
 			end
 		end
@@ -586,7 +959,7 @@ RunService.Stepped:Connect(function()
 	end
 end)
 
--- 5. STATUS TAB
+-- 7. STATUS TAB
 local function setupStatusTab(statusFrame)
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "StatusScroll"
@@ -689,6 +1062,7 @@ local function setupStatusTab(statusFrame)
 		local label = statLabels[statName]
 
 		if statObj then
+			label.Text = statName .. ": " + formatNumber(statObj.Value) -- Wait, let's fix concatenation in Lua
 			label.Text = statName .. ": " .. formatNumber(statObj.Value)
 			statObj:GetPropertyChangedSignal("Value"):Connect(function()
 				label.Text = statName .. ": " .. formatNumber(statObj.Value)
@@ -714,7 +1088,7 @@ end
 
 setupStatusTab(contentFrames["Status"])
 
--- 6. Universal Draggable Wrapper
+-- 8. Universal Draggable Wrapper
 local function makeDraggable(guiObject)
 	local dragging = false
 	local dragInput, dragStart, startPos
@@ -753,7 +1127,7 @@ end
 makeDraggable(MainFrame)
 makeDraggable(ToggleBtn)
 
--- 7. UI Controls
+-- 9. UI Controls
 Mini.MouseButton1Click:Connect(function()
 	MainFrame.Visible = false
 	ToggleBtn.Visible = true
