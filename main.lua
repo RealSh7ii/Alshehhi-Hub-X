@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local StatsService = game:GetService("Stats")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -123,7 +124,7 @@ TitleText.Size = UDim2.new(0.72, 0, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
 TitleText.Font = Enum.Font.SourceSansBold
-TitleText.Text = "Alshehhi Hub X  v1.2.0  |  Credits: Rashed Ahmed Alshehhi"
+TitleText.Text = "Alshehhi Hub X  v1.2.1  |  Credits: Rashed Ahmed Alshehhi"
 TitleText.TextColor3 = C_WHITE
 TitleText.TextSize = 14
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
@@ -530,14 +531,11 @@ local function setupMainTab(mainFrame)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = scroll
 
-	-- Create Main Toggles
 	createToggleCard(scroll, "Auto Farm Weight", getgenv().AutoWeight, function(state) getgenv().AutoWeight = state end, 1)
 	createToggleCard(scroll, "Auto Farm Pushups", getgenv().AutoPushups, function(state) getgenv().AutoPushups = state end, 2)
 	createToggleCard(scroll, "Auto Farm Situps", getgenv().AutoSitups, function(state) getgenv().AutoSitups = state end, 3)
 	createToggleCard(scroll, "Auto Farm Punch", getgenv().AutoPunch, function(state) getgenv().AutoPunch = state end, 4)
 	createToggleCard(scroll, "Auto Farm Handstands", getgenv().AutoHandstands, function(state) getgenv().AutoHandstands = state end, 5)
-	
-	-- Movement & Positioning Toggles
 	createToggleCard(scroll, "Auto Walk", getgenv().AutoWalk, function(state) getgenv().AutoWalk = state end, 6)
 	createToggleCard(scroll, "Lock Position", getgenv().LockPosition, function(state) getgenv().LockPosition = state end, 7)
 end
@@ -808,7 +806,7 @@ task.spawn(function()
 		if char then
 			local hum = char:FindFirstChildOfClass("Humanoid")
 			local backpack = LocalPlayer:FindFirstChild("Backpack")
-			local event = LocalPlayer:FindFirstChild("muscleEvent") or game:GetService("ReplicatedStorage"):FindFirstChild("muscleEvent")
+			local event = LocalPlayer:FindFirstChild("muscleEvent") or ReplicatedStorage:FindFirstChild("muscleEvent")
 
 			local farmMapping = {
 				{State = getgenv().AutoWeight, Tool = "Weight"},
@@ -838,7 +836,7 @@ task.spawn(function()
 	end
 end)
 
--- Background Execution Task (Auto Rebirth with Target Support)
+-- Background Execution Task (Robust Auto Rebirth with Target Support)
 task.spawn(function()
 	while task.wait(0.2) do
 		if getgenv().AutoRebirth then
@@ -851,9 +849,19 @@ task.spawn(function()
 					return
 				end
 
-				local rebirthRemote = game:GetService("ReplicatedStorage"):FindFirstChild("rebirthEvent") or game:GetService("ReplicatedStorage"):FindFirstChild("RebirthEvent")
+				-- Locate Rebirth Remote across standard Muscle Legends paths (Event or Function)
+				local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
+				local rebirthRemote = ReplicatedStorage:FindFirstChild("rebirthEvent") 
+					or ReplicatedStorage:FindFirstChild("RebirthEvent")
+					or ReplicatedStorage:FindFirstChild("Rebirth")
+					or (remotesFolder and (remotesFolder:FindFirstChild("Rebirth") or remotesFolder:FindFirstChild("rebirthEvent") or remotesFolder:FindFirstChild("RebirthEvent")))
+
 				if rebirthRemote then
-					rebirthRemote:FireServer()
+					if rebirthRemote:IsA("RemoteEvent") then
+						rebirthRemote:FireServer()
+					elseif rebirthRemote:IsA("RemoteFunction") then
+						rebirthRemote:InvokeServer()
+					end
 				end
 			end)
 		end
@@ -874,7 +882,6 @@ task.spawn(function()
 					hum:EquipTool(punchTool)
 				end
 
-				-- Find a valid target player not in whitelist
 				local targetPlayer = nil
 				for _, plr in ipairs(Players:GetPlayers()) do
 					if plr ~= LocalPlayer and not getgenv().KillWhitelist[plr.UserId] then
@@ -894,7 +901,6 @@ task.spawn(function()
 					local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
 					local myRoot = char.HumanoidRootPart
 
-					-- Teleport close and attack
 					myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 2)
 					myRoot.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
 
@@ -904,7 +910,7 @@ task.spawn(function()
 						end)
 					end
 
-					local event = LocalPlayer:FindFirstChild("muscleEvent") or game:GetService("ReplicatedStorage"):FindFirstChild("muscleEvent")
+					local event = LocalPlayer:FindFirstChild("muscleEvent") or ReplicatedStorage:FindFirstChild("muscleEvent")
 					if event then
 						pcall(function()
 							event:FireServer("punch")
@@ -912,7 +918,6 @@ task.spawn(function()
 						end)
 					end
 
-					-- Check if target died
 					if targetHum.Health <= 0 then
 						if getgenv().OnlyKillOne then
 							getgenv().AutoKillAll = false
@@ -926,7 +931,7 @@ task.spawn(function()
 	end
 end)
 
--- Background Execution Task (Auto Walk - Simulates holding W simultaneously with Lock Position)
+-- Background Execution Task (Auto Walk)
 RunService.RenderStepped:Connect(function()
 	if getgenv().AutoWalk then
 		local char = LocalPlayer.Character
@@ -939,7 +944,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- Lock Position Execution (Bypasses physics forces to keep you in place while walking)
+-- Lock Position Execution
 local lockedCFrame = nil
 
 RunService.Stepped:Connect(function()
@@ -1062,7 +1067,6 @@ local function setupStatusTab(statusFrame)
 		local label = statLabels[statName]
 
 		if statObj then
-			label.Text = statName .. ": " + formatNumber(statObj.Value) -- Wait, let's fix concatenation in Lua
 			label.Text = statName .. ": " .. formatNumber(statObj.Value)
 			statObj:GetPropertyChangedSignal("Value"):Connect(function()
 				label.Text = statName .. ": " .. formatNumber(statObj.Value)
