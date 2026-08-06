@@ -863,7 +863,7 @@ task.spawn(function()
 	end
 end)
 
--- Background Execution Task (Robust Auto Rebirth with Target Support)
+-- Background Execution Task (Auto Rebirth clicking Players.LocalPlayer.PlayerGui.gameGui.rebirthMenu.confirmButton)
 task.spawn(function()
 	while task.wait(0.2) do
 		if getgenv().AutoRebirth then
@@ -876,6 +876,18 @@ task.spawn(function()
 					return
 				end
 
+				-- Target UI Button Path: Players.LocalPlayer.PlayerGui.gameGui.rebirthMenu.confirmButton
+				local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+				local gameGui = pGui and pGui:FindFirstChild("gameGui")
+				local rebirthMenu = gameGui and gameGui:FindFirstChild("rebirthMenu")
+				local confirmButton = rebirthMenu and rebirthMenu:FindFirstChild("confirmButton")
+
+				if confirmButton and typeof(firesignal) == "function" then
+					firesignal(confirmButton.MouseButton1Click)
+					firesignal(confirmButton.Activated)
+				end
+
+				-- Fallback Remote Events
 				local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
 				local rebirthRemote = ReplicatedStorage:FindFirstChild("rebirthEvent") 
 					or ReplicatedStorage:FindFirstChild("RebirthEvent")
