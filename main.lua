@@ -61,25 +61,52 @@ local function formatNumber(value)
 	end
 end
 
--- Helper Function: Fetch Player Stats Safely
-local function getStatValue(statName)
+-- Helper Function: Robust Recursive Stat Finder (Handles Subfolders & Partial Names)
+local function findStatObject(statName)
 	local targetLower = string.lower(statName)
-	local locations = {
-		LocalPlayer,
+
+	local function searchInstance(parent)
+		for _, child in ipairs(parent:GetChildren()) do
+			local childName = string.lower(child.Name)
+			if (childName == targetLower or string.find(childName, targetLower)) and (child:IsA("ValueBase") or child:IsA("StringValue")) then
+				return child
+			end
+			if #child:GetChildren() > 0 and not child:IsA("Player") then
+				local found = searchInstance(child)
+				if found then return found end
+			end
+		end
+		return nil
+	end
+
+	-- Check standard priority locations first
+	local priorityLocations = {
 		LocalPlayer:FindFirstChild("leaderstats"),
 		LocalPlayer:FindFirstChild("stats"),
-		LocalPlayer:FindFirstChild("PrivateStats"),
-		LocalPlayer:FindFirstChild("Data")
+		LocalPlayer:FindFirstChild("Stats"),
+		LocalPlayer:FindFirstChild("Data"),
+		LocalPlayer
 	}
 
-	for _, loc in ipairs(locations) do
+	for _, loc in ipairs(priorityLocations) do
 		if loc then
 			for _, child in ipairs(loc:GetChildren()) do
-				if string.lower(child.Name) == targetLower and (child:IsA("ValueBase") or child:IsA("StringValue")) then
-					return tonumber(child.Value) or 0
+				local childName = string.lower(child.Name)
+				if (childName == targetLower or string.find(childName, targetLower)) and (child:IsA("ValueBase") or child:IsA("StringValue")) then
+					return child
 				end
 			end
 		end
+	end
+
+	-- Fallback to deep recursive search
+	return searchInstance(LocalPlayer)
+end
+
+local function getStatValue(statName)
+	local statObj = findStatObject(statName)
+	if statObj then
+		return tonumber(statObj.Value) or 0
 	end
 	return 0
 end
@@ -849,7 +876,6 @@ task.spawn(function()
 					return
 				end
 
-				-- Locate Rebirth Remote across standard Muscle Legends paths (Event or Function)
 				local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
 				local rebirthRemote = ReplicatedStorage:FindFirstChild("rebirthEvent") 
 					or ReplicatedStorage:FindFirstChild("RebirthEvent")
@@ -1028,7 +1054,10 @@ local function setupStatusTab(statusFrame)
 			fpsLabel.Text = "FPS: " .. frameCount
 			frameCount = 0
 			lastTime = currentTime
-			local ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
+			local ping = 0
+			pcall(function()
+				ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
+			end)
 			pingLabel.Text = "Ping: " .. ping .. " ms"
 		end
 	end)
@@ -1038,28 +1067,6 @@ local function setupStatusTab(statusFrame)
 
 	for i, statName in ipairs(targetStats) do
 		statLabels[statName] = createStatCard(statName .. "Card", statName .. ": 0", 10 + i)
-	end
-
-	local function findStatObject(statName)
-		local targetLower = string.lower(statName)
-		local locations = {
-			LocalPlayer,
-			LocalPlayer:FindFirstChild("leaderstats"),
-			LocalPlayer:FindFirstChild("stats"),
-			LocalPlayer:FindFirstChild("PrivateStats"),
-			LocalPlayer:FindFirstChild("Data")
-		}
-
-		for _, loc in ipairs(locations) do
-			if loc then
-				for _, child in ipairs(loc:GetChildren()) do
-					if string.lower(child.Name) == targetLower and (child:IsA("ValueBase") or child:IsA("StringValue")) then
-						return child
-					end
-				end
-			end
-		end
-		return nil
 	end
 
 	local function bindStat(statName)
