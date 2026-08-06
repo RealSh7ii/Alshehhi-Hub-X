@@ -15,7 +15,7 @@ if PlayerGui:FindFirstChild("ScriptA") then
 	PlayerGui.ScriptA:Destroy()
 end
 
--- Global Auto Farm, Rebirth, Killer & Utility States
+-- Global Auto Farm, Rebirth, Killer, Crystal & Utility States
 getgenv().AutoWeight = false
 getgenv().AutoPushups = false
 getgenv().AutoSitups = false
@@ -28,6 +28,8 @@ getgenv().TargetRebirths = 0
 getgenv().AutoKillAll = false
 getgenv().OnlyKillOne = false
 getgenv().KillWhitelist = {}
+getgenv().AutoCrystal = false
+getgenv().SelectedCrystal = nil
 
 -- Color Palette Constants (Strictly Black & White)
 local C_BLACK = Color3.fromRGB(0, 0, 0)
@@ -826,6 +828,184 @@ end
 
 setupKillerTab(contentFrames["Killer"])
 
+-- 7. CRYSTAL TAB: Auto Open Crystals from Workspace.mapCrystalsFolder
+local function setupCrystalTab(crystalFrame)
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "CrystalScroll"
+	scroll.Size = UDim2.new(1, 0, 1, -32)
+	scroll.Position = UDim2.new(0, 0, 0, 32)
+	scroll.BackgroundTransparency = 1
+	scroll.ScrollBarThickness = 4
+	scroll.ScrollBarImageColor3 = C_BORDER_DIM
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.Parent = crystalFrame
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 8)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = scroll
+
+	-- Auto Crystal Toggle
+	createToggleCard(scroll, "Auto Open Crystal", getgenv().AutoCrystal, function(state)
+		getgenv().AutoCrystal = state
+	end, 1)
+
+	-- Header Card for Crystal List
+	local headerCard = Instance.new("Frame")
+	headerCard.Size = UDim2.new(1, -6, 0, 30)
+	headerCard.BackgroundColor3 = C_CARD_BG
+	headerCard.BackgroundTransparency = 0.2
+	headerCard.LayoutOrder = 2
+	headerCard.Parent = scroll
+
+	local hCorner = Instance.new("UICorner")
+	hCorner.CornerRadius = UDim.new(0, 6)
+	hCorner.Parent = headerCard
+
+	local hStroke = Instance.new("UIStroke")
+	hStroke.Color = C_BORDER_DIM
+	hStroke.Thickness = 1
+	hStroke.Parent = headerCard
+
+	local hLabel = Instance.new("TextLabel")
+	hLabel.Size = UDim2.new(1, -16, 1, 0)
+	hLabel.Position = UDim2.new(0, 8, 0, 0)
+	hLabel.BackgroundTransparency = 1
+	hLabel.Font = Enum.Font.SourceSansBold
+	hLabel.Text = "Crystals"
+	hLabel.TextColor3 = C_WHITE
+	hLabel.TextSize = 13
+	hLabel.TextXAlignment = Enum.TextXAlignment.Left
+	hLabel.Parent = headerCard
+
+	-- Crystals List Container Frame
+	local crystalContainer = Instance.new("Frame")
+	crystalContainer.Size = UDim2.new(1, -6, 0, 200)
+	crystalContainer.BackgroundColor3 = C_CARD_BG
+	crystalContainer.BackgroundTransparency = 0.2
+	crystalContainer.LayoutOrder = 3
+	crystalContainer.Parent = scroll
+
+	local pcCorner = Instance.new("UICorner")
+	pcCorner.CornerRadius = UDim.new(0, 6)
+	pcCorner.Parent = crystalContainer
+
+	local pcStroke = Instance.new("UIStroke")
+	pcStroke.Color = C_BORDER_DIM
+	pcStroke.Thickness = 1
+	pcStroke.Parent = crystalContainer
+
+	local crystalScroll = Instance.new("ScrollingFrame")
+	crystalScroll.Name = "CrystalListScroll"
+	crystalScroll.Size = UDim2.new(1, -8, 1, -8)
+	crystalScroll.Position = UDim2.new(0, 4, 0, 4)
+	crystalScroll.BackgroundTransparency = 1
+	crystalScroll.ScrollBarThickness = 3
+	crystalScroll.ScrollBarImageColor3 = C_BORDER_DIM
+	crystalScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	crystalScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	crystalScroll.Parent = crystalContainer
+
+	local cListLayout = Instance.new("UIListLayout")
+	cListLayout.Padding = UDim.new(0, 4)
+	cListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	cListLayout.Parent = crystalScroll
+
+	local function refreshCrystalList()
+		for _, child in ipairs(crystalScroll:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+
+		local crystalsFolder = workspace:FindFirstChild("mapCrystalsFolder")
+		if not crystalsFolder then return end
+
+		local orderIdx = 1
+		for _, crystal in ipairs(crystalsFolder:GetChildren()) do
+			local row = Instance.new("Frame")
+			row.Size = UDim2.new(1, -4, 0, 36)
+			row.BackgroundColor3 = C_BLACK
+			row.BackgroundTransparency = 0.4
+			row.LayoutOrder = orderIdx
+			row.Parent = crystalScroll
+
+			local rCorner = Instance.new("UICorner")
+			rCorner.CornerRadius = UDim.new(0, 4)
+			rCorner.Parent = row
+
+			local rStroke = Instance.new("UIStroke")
+			rStroke.Color = C_BORDER_DIM
+			rStroke.Thickness = 1
+			rStroke.Parent = row
+
+			local nameLbl = Instance.new("TextLabel")
+			nameLbl.Size = UDim2.new(0.55, 0, 1, 0)
+			nameLbl.Position = UDim2.new(0, 8, 0, 0)
+			nameLbl.BackgroundTransparency = 1
+			nameLbl.Font = Enum.Font.SourceSansBold
+			nameLbl.Text = crystal.Name
+			nameLbl.TextColor3 = C_WHITE
+			nameLbl.TextSize = 13
+			nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+			nameLbl.Parent = row
+
+			local selectBtn = Instance.new("TextButton")
+			selectBtn.Size = UDim2.new(0.38, 0, 0.7, 0)
+			selectBtn.Position = UDim2.new(0.6, 0, 0.15, 0)
+			selectBtn.Font = Enum.Font.SourceSansBold
+			selectBtn.TextSize = 12
+			selectBtn.Parent = row
+
+			local sCorner = Instance.new("UICorner")
+			sCorner.CornerRadius = UDim.new(0, 4)
+			sCorner.Parent = selectBtn
+
+			local sStroke = Instance.new("UIStroke")
+			sStroke.Thickness = 1
+			sStroke.Parent = selectBtn
+
+			local function updateSelectStyle()
+				if getgenv().SelectedCrystal == crystal.Name then
+					selectBtn.Text = "SELECTED"
+					selectBtn.BackgroundColor3 = C_WHITE
+					selectBtn.TextColor3 = C_BLACK
+					sStroke.Color = C_WHITE
+				else
+					selectBtn.Text = "SELECT"
+					selectBtn.BackgroundColor3 = C_BLACK
+					selectBtn.TextColor3 = C_MUTED
+					sStroke.Color = C_BORDER_DIM
+				end
+			end
+
+			updateSelectStyle()
+
+			selectBtn.MouseButton1Click:Connect(function()
+				if getgenv().SelectedCrystal == crystal.Name then
+					getgenv().SelectedCrystal = nil
+				else
+					getgenv().SelectedCrystal = crystal.Name
+				end
+				refreshCrystalList()
+			end)
+
+			orderIdx += 1
+		end
+	end
+
+	refreshCrystalList()
+
+	task.spawn(function()
+		while task.wait(3) do
+			refreshCrystalList()
+		end
+	end)
+end
+
+setupCrystalTab(contentFrames["Crystal"])
+
 -- Background Execution Task (Farming Tools)
 task.spawn(function()
 	while task.wait(0.1) do
@@ -863,7 +1043,7 @@ task.spawn(function()
 	end
 end)
 
--- Background Execution Task (Auto Rebirth clicking Players.LocalPlayer.PlayerGui.gameGui.rebirthMenu.confirmButton)
+-- Background Execution Task (Auto Rebirth)
 task.spawn(function()
 	while task.wait(0.2) do
 		if getgenv().AutoRebirth then
@@ -876,7 +1056,6 @@ task.spawn(function()
 					return
 				end
 
-				-- Target UI Button Path: Players.LocalPlayer.PlayerGui.gameGui.rebirthMenu.confirmButton
 				local pGui = LocalPlayer:FindFirstChild("PlayerGui")
 				local gameGui = pGui and pGui:FindFirstChild("gameGui")
 				local rebirthMenu = gameGui and gameGui:FindFirstChild("rebirthMenu")
@@ -887,7 +1066,6 @@ task.spawn(function()
 					firesignal(confirmButton.Activated)
 				end
 
-				-- Fallback Remote Events
 				local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
 				local rebirthRemote = ReplicatedStorage:FindFirstChild("rebirthEvent") 
 					or ReplicatedStorage:FindFirstChild("RebirthEvent")
@@ -899,6 +1077,44 @@ task.spawn(function()
 						rebirthRemote:FireServer()
 					elseif rebirthRemote:IsA("RemoteFunction") then
 						rebirthRemote:InvokeServer()
+					end
+				end
+			end)
+		end
+	end
+end)
+
+-- Background Execution Task (Auto Open Crystal / Egg)
+task.spawn(function()
+	while task.wait(0.3) do
+		if getgenv().AutoCrystal and getgenv().SelectedCrystal then
+			pcall(function()
+				local crystalsFolder = workspace:FindFirstChild("mapCrystalsFolder")
+				local crystalModel = crystalsFolder and crystalsFolder:FindFirstChild(getgenv().SelectedCrystal)
+
+				local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
+				local crystalRemote = ReplicatedStorage:FindFirstChild("openCrystal")
+					or ReplicatedStorage:FindFirstChild("OpenCrystal")
+					or ReplicatedStorage:FindFirstChild("CrystalRemote")
+					or ReplicatedStorage:FindFirstChild("openEgg")
+					or ReplicatedStorage:FindFirstChild("OpenEgg")
+					or (remotesFolder and (remotesFolder:FindFirstChild("openCrystal") or remotesFolder:FindFirstChild("OpenCrystal") or remotesFolder:FindFirstChild("CrystalRemote") or remotesFolder:FindFirstChild("openEgg")))
+
+				if crystalRemote then
+					if crystalRemote:IsA("RemoteEvent") then
+						crystalRemote:FireServer(getgenv().SelectedCrystal, 1)
+						crystalRemote:FireServer(getgenv().SelectedCrystal)
+					elseif crystalRemote:IsA("RemoteFunction") then
+						crystalRemote:InvokeServer(getgenv().SelectedCrystal, 1)
+						crystalRemote:InvokeServer(getgenv().SelectedCrystal)
+					end
+				end
+
+				if crystalModel then
+					for _, descendant in ipairs(crystalModel:GetDescendants()) do
+						if descendant:IsA("ProximityPrompt") and typeof(fireproximityprompt) == "function" then
+							fireproximityprompt(descendant)
+						end
 					end
 				end
 			end)
@@ -1002,7 +1218,7 @@ RunService.Stepped:Connect(function()
 	end
 end)
 
--- 7. STATUS TAB
+-- 8. STATUS TAB
 local function setupStatusTab(statusFrame)
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "StatusScroll"
@@ -1111,7 +1327,7 @@ end
 
 setupStatusTab(contentFrames["Status"])
 
--- 8. Universal Draggable Wrapper
+-- 9. Universal Draggable Wrapper
 local function makeDraggable(guiObject)
 	local dragging = false
 	local dragInput, dragStart, startPos
@@ -1150,7 +1366,7 @@ end
 makeDraggable(MainFrame)
 makeDraggable(ToggleBtn)
 
--- 9. UI Controls
+-- 10. UI Controls
 Mini.MouseButton1Click:Connect(function()
 	MainFrame.Visible = false
 	ToggleBtn.Visible = true
