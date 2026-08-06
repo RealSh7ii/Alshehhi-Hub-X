@@ -553,9 +553,9 @@ task.spawn(function()
 	end
 end)
 
--- Background Execution Task (Auto Walk - Camera-relative forward movement, exactly like holding W)
+-- Background Execution Task (Auto Walk - Simulates holding W simultaneously with Lock Position)
 RunService.RenderStepped:Connect(function()
-	if getgenv().AutoWalk and not getgenv().LockPosition then
+	if getgenv().AutoWalk then
 		local char = LocalPlayer.Character
 		if char then
 			local hum = char:FindFirstChildOfClass("Humanoid")
@@ -566,7 +566,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- Lock Position Execution (Bypasses physics forces)
+-- Lock Position Execution (Bypasses physics forces to keep you in place while walking)
 local lockedCFrame = nil
 
 RunService.Stepped:Connect(function()
