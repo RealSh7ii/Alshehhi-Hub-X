@@ -1,4 +1,4 @@
--- Safe Global Environment Wrapper (Prevents getgenv nil errors everywhere)
+-- Safe Global Environment Wrapper
 local getgenv = (typeof(getgenv) == "function" and getgenv) or function() return _G end
 
 local Players = game:GetService("Players")
@@ -14,12 +14,23 @@ if PlayerGui:FindFirstChild("ScriptA") then
 	PlayerGui.ScriptA:Destroy()
 end
 
--- Global Auto Farm States
+-- Global Auto Farm & Utility States
 getgenv().AutoWeight = false
 getgenv().AutoPushups = false
 getgenv().AutoSitups = false
 getgenv().AutoPunch = false
 getgenv().AutoHandstands = false
+getgenv().AutoWalk = false
+getgenv().LockPosition = false
+
+-- Color Palette Constants (Strictly Black & White)
+local C_BLACK = Color3.fromRGB(0, 0, 0)
+local C_DARK_BG = Color3.fromRGB(12, 12, 12)
+local C_CARD_BG = Color3.fromRGB(22, 22, 22)
+local C_BORDER = Color3.fromRGB(255, 255, 255)
+local C_BORDER_DIM = Color3.fromRGB(80, 80, 80)
+local C_WHITE = Color3.fromRGB(255, 255, 255)
+local C_MUTED = Color3.fromRGB(150, 150, 150)
 
 -- Helper Function: Abbreviate Large Numbers
 local function formatNumber(value)
@@ -55,11 +66,11 @@ ScriptA.Parent = PlayerGui
 -- Main UI Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0.52, 0, 0.54, 0)
-MainFrame.Position = UDim2.new(0.24, 0, 0.23, 0)
+MainFrame.Size = UDim2.new(0.52, 0, 0.58, 0)
+MainFrame.Position = UDim2.new(0.24, 0, 0.21, 0)
 MainFrame.BorderSizePixel = 0
-MainFrame.BackgroundTransparency = 0.15
-MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+MainFrame.BackgroundTransparency = 0.05
+MainFrame.BackgroundColor3 = C_DARK_BG
 MainFrame.Parent = ScriptA
 
 local UICorner = Instance.new("UICorner")
@@ -67,7 +78,7 @@ UICorner.CornerRadius = UDim.new(0, 8)
 UICorner.Parent = MainFrame
 
 local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(45, 45, 45)
+UIStroke.Color = C_BORDER
 UIStroke.Thickness = 1.5
 UIStroke.Parent = MainFrame
 
@@ -84,8 +95,8 @@ TitleText.Size = UDim2.new(0.72, 0, 1, 0)
 TitleText.Position = UDim2.new(0, 12, 0, 0)
 TitleText.BackgroundTransparency = 1
 TitleText.Font = Enum.Font.SourceSansBold
-TitleText.Text = "Alshehhi Hub X  v1.0.0  |  Credits: Rashed Ahmed Alshehhi"
-TitleText.TextColor3 = Color3.fromRGB(240, 240, 240)
+TitleText.Text = "Alshehhi Hub X  v1.1.0  |  Credits: Rashed Ahmed Alshehhi"
+TitleText.TextColor3 = C_WHITE
 TitleText.TextSize = 14
 TitleText.TextXAlignment = Enum.TextXAlignment.Left
 TitleText.Parent = TopBar
@@ -98,7 +109,7 @@ Mini.Position = UDim2.new(1, -68, 0, 3)
 Mini.BackgroundTransparency = 1
 Mini.Font = Enum.Font.SourceSansBold
 Mini.Text = "—"
-Mini.TextColor3 = Color3.fromRGB(170, 170, 170)
+Mini.TextColor3 = C_MUTED
 Mini.TextSize = 16
 Mini.Parent = TopBar
 
@@ -110,7 +121,7 @@ Exit.Position = UDim2.new(1, -34, 0, 3)
 Exit.BackgroundTransparency = 1
 Exit.Font = Enum.Font.SourceSansBold
 Exit.Text = "X"
-Exit.TextColor3 = Color3.fromRGB(170, 170, 170)
+Exit.TextColor3 = C_MUTED
 Exit.TextSize = 15
 Exit.Parent = TopBar
 
@@ -119,7 +130,7 @@ local Divider = Instance.new("Frame")
 Divider.Size = UDim2.new(1, 0, 0, 1)
 Divider.Position = UDim2.new(0, 0, 0, 36)
 Divider.BorderSizePixel = 0
-Divider.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Divider.BackgroundColor3 = C_BORDER_DIM
 Divider.Parent = MainFrame
 
 -- Floating Open/Close Toggle Button ("A")
@@ -127,10 +138,10 @@ local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Name = "OpenToggle"
 ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
 ToggleBtn.Position = UDim2.new(0.02, 0, 0.4, 0)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+ToggleBtn.BackgroundColor3 = C_BLACK
 ToggleBtn.Font = Enum.Font.Creepster
 ToggleBtn.Text = "A"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.TextColor3 = C_WHITE
 ToggleBtn.TextSize = 26
 ToggleBtn.Visible = false
 ToggleBtn.Parent = ScriptA
@@ -138,11 +149,6 @@ ToggleBtn.Parent = ScriptA
 local ToggleCorner = Instance.new("UICorner")
 ToggleCorner.CornerRadius = UDim.new(0, 8)
 ToggleCorner.Parent = ToggleBtn
-
-local ToggleStroke = Instance.new("UIStroke")
-ToggleStroke.Color = Color3.fromRGB(255, 0, 0)
-ToggleStroke.Thickness = 1.5
-ToggleStroke.Parent = ToggleBtn
 
 -- 2. Left Sidebar & Navigation Layout
 local Sidebar = Instance.new("Frame")
@@ -173,11 +179,11 @@ for i, name in ipairs(tabNames) do
 	local btn = Instance.new("TextButton")
 	btn.Name = name .. "TabBtn"
 	btn.Size = UDim2.new(1, 0, 0, 30)
-	btn.BackgroundColor3 = (i == 1) and Color3.fromRGB(35, 35, 35) or Color3.fromRGB(20, 20, 20)
+	btn.BackgroundColor3 = (i == 1) and Color3.fromRGB(35, 35, 35) or C_BLACK
 	btn.BackgroundTransparency = (i == 1) and 0.2 or 0.6
 	btn.Font = Enum.Font.SourceSansBold
 	btn.Text = "  " .. name
-	btn.TextColor3 = (i == 1) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 160, 160)
+	btn.TextColor3 = (i == 1) and C_WHITE or C_MUTED
 	btn.TextSize = 14
 	btn.TextXAlignment = Enum.TextXAlignment.Left
 	btn.LayoutOrder = i
@@ -189,7 +195,7 @@ for i, name in ipairs(tabNames) do
 
 	local btnStroke = Instance.new("UIStroke")
 	btnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	btnStroke.Color = (i == 1) and Color3.fromRGB(220, 40, 40) or Color3.fromRGB(50, 50, 50)
+	btnStroke.Color = (i == 1) and C_WHITE or C_BORDER_DIM
 	btnStroke.Thickness = 1
 	btnStroke.Parent = btn
 
@@ -207,7 +213,7 @@ for i, name in ipairs(tabNames) do
 	headerLabel.BackgroundTransparency = 1
 	headerLabel.Font = Enum.Font.SourceSansBold
 	headerLabel.Text = name
-	headerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	headerLabel.TextColor3 = C_WHITE
 	headerLabel.TextSize = 20
 	headerLabel.TextXAlignment = Enum.TextXAlignment.Left
 	headerLabel.Parent = content
@@ -218,18 +224,89 @@ for i, name in ipairs(tabNames) do
 	btn.MouseButton1Click:Connect(function()
 		for _, frameName in ipairs(tabNames) do
 			contentFrames[frameName].Visible = false
-			tabButtons[frameName].BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+			tabButtons[frameName].BackgroundColor3 = C_BLACK
 			tabButtons[frameName].BackgroundTransparency = 0.6
-			tabButtons[frameName].TextColor3 = Color3.fromRGB(160, 160, 160)
-			tabButtons[frameName]:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(50, 50, 50)
+			tabButtons[frameName].TextColor3 = C_MUTED
+			tabButtons[frameName]:FindFirstChildOfClass("UIStroke").Color = C_BORDER_DIM
 		end
 
 		content.Visible = true
 		btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 		btn.BackgroundTransparency = 0.2
-		btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		btn:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(220, 40, 40)
+		btn.TextColor3 = C_WHITE
+		btn:FindFirstChildOfClass("UIStroke").Color = C_WHITE
 	end)
+end
+
+-- Helper Function: B&W Toggle Switches
+local function createToggleCard(parentScroll, title, initialValue, onToggleCallback, order)
+	local card = Instance.new("Frame")
+	card.Size = UDim2.new(1, -6, 0, 42)
+	card.BackgroundColor3 = C_CARD_BG
+	card.BackgroundTransparency = 0.2
+	card.LayoutOrder = order
+	card.Parent = parentScroll
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = card
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = C_BORDER_DIM
+	stroke.Thickness = 1
+	stroke.Parent = card
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(0.55, 0, 1, 0)
+	label.Position = UDim2.new(0, 10, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.SourceSansBold
+	label.Text = title .. ":"
+	label.TextColor3 = C_WHITE
+	label.TextSize = 14
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = card
+
+	local toggleBtn = Instance.new("TextButton")
+	toggleBtn.Size = UDim2.new(0.35, 0, 0.65, 0)
+	toggleBtn.Position = UDim2.new(0.61, 0, 0.175, 0)
+	toggleBtn.Font = Enum.Font.SourceSansBold
+	toggleBtn.TextSize = 13
+	toggleBtn.Parent = card
+
+	local toggleCorner = Instance.new("UICorner")
+	toggleCorner.CornerRadius = UDim.new(0, 4)
+	toggleCorner.Parent = toggleBtn
+
+	local toggleStroke = Instance.new("UIStroke")
+	toggleStroke.Thickness = 1
+	toggleStroke.Parent = toggleBtn
+
+	local active = initialValue
+
+	local function updateStyle()
+		if active then
+			toggleBtn.Text = "ON"
+			toggleBtn.BackgroundColor3 = C_WHITE
+			toggleBtn.TextColor3 = C_BLACK
+			toggleStroke.Color = C_WHITE
+		else
+			toggleBtn.Text = "OFF"
+			toggleBtn.BackgroundColor3 = C_BLACK
+			toggleBtn.TextColor3 = C_MUTED
+			toggleStroke.Color = C_BORDER_DIM
+		end
+	end
+
+	updateStyle()
+
+	toggleBtn.MouseButton1Click:Connect(function()
+		active = not active
+		updateStyle()
+		onToggleCallback(active)
+	end)
+
+	return card
 end
 
 -- 3. HOME TAB
@@ -240,7 +317,7 @@ local function setupHomeTab(homeFrame)
 	scroll.Position = UDim2.new(0, 0, 0, 32)
 	scroll.BackgroundTransparency = 1
 	scroll.ScrollBarThickness = 4
-	scroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
+	scroll.ScrollBarImageColor3 = C_BORDER_DIM
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.Parent = homeFrame
@@ -250,12 +327,11 @@ local function setupHomeTab(homeFrame)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = scroll
 
-	local function createCard(name, order)
+	local function createInputCard(title, placeholder, order, onFocusLost)
 		local card = Instance.new("Frame")
-		card.Name = name
 		card.Size = UDim2.new(1, -6, 0, 42)
-		card.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-		card.BackgroundTransparency = 0.3
+		card.BackgroundColor3 = C_CARD_BG
+		card.BackgroundTransparency = 0.2
 		card.LayoutOrder = order
 		card.Parent = scroll
 
@@ -264,45 +340,52 @@ local function setupHomeTab(homeFrame)
 		corner.Parent = card
 
 		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(45, 45, 45)
+		stroke.Color = C_BORDER_DIM
 		stroke.Thickness = 1
 		stroke.Parent = card
 
-		return card
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(0.55, 0, 1, 0)
+		label.Position = UDim2.new(0, 10, 0, 0)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.SourceSansBold
+		label.Text = title .. ":"
+		label.TextColor3 = C_WHITE
+		label.TextSize = 14
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = card
+
+		local box = Instance.new("TextBox")
+		box.Size = UDim2.new(0.35, 0, 0.65, 0)
+		box.Position = UDim2.new(0.61, 0, 0.175, 0)
+		box.BackgroundColor3 = C_BLACK
+		box.Font = Enum.Font.SourceSansBold
+		box.PlaceholderText = placeholder
+		box.Text = ""
+		box.TextColor3 = C_WHITE
+		box.TextSize = 13
+		box.Parent = card
+
+		local boxCorner = Instance.new("UICorner")
+		boxCorner.CornerRadius = UDim.new(0, 4)
+		boxCorner.Parent = box
+
+		local boxStroke = Instance.new("UIStroke")
+		boxStroke.Color = C_BORDER_DIM
+		boxStroke.Thickness = 1
+		boxStroke.Parent = box
+
+		box.FocusLost:Connect(function()
+			onFocusLost(box.Text)
+		end)
+
+		return box
 	end
 
 	-- WalkSpeed Section
-	local speedCard = createCard("SpeedCard", 1)
-	local speedLabel = Instance.new("TextLabel")
-	speedLabel.Size = UDim2.new(0.5, 0, 1, 0)
-	speedLabel.Position = UDim2.new(0, 10, 0, 0)
-	speedLabel.BackgroundTransparency = 1
-	speedLabel.Font = Enum.Font.SourceSansBold
-	speedLabel.Text = "WalkSpeed:"
-	speedLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-	speedLabel.TextSize = 14
-	speedLabel.TextXAlignment = Enum.TextXAlignment.Left
-	speedLabel.Parent = speedCard
-
-	local speedBox = Instance.new("TextBox")
-	speedBox.Name = "SpeedBox"
-	speedBox.Size = UDim2.new(0.38, 0, 0.65, 0)
-	speedBox.Position = UDim2.new(0.58, 0, 0.175, 0)
-	speedBox.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-	speedBox.Font = Enum.Font.SourceSansBold
-	speedBox.PlaceholderText = "16"
-	speedBox.Text = ""
-	speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-	speedBox.TextSize = 13
-	speedBox.Parent = speedCard
-
-	local boxCorner = Instance.new("UICorner")
-	boxCorner.CornerRadius = UDim.new(0, 4)
-	boxCorner.Parent = speedBox
-
 	local currentSpeed = 16
-	speedBox.FocusLost:Connect(function()
-		local num = tonumber(speedBox.Text)
+	local speedBox = createInputCard("WalkSpeed", "16", 1, function(text)
+		local num = tonumber(text)
 		if num then
 			currentSpeed = num
 			if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -320,44 +403,10 @@ local function setupHomeTab(homeFrame)
 	end)
 
 	-- Infinite Jump Section
-	local jumpCard = createCard("JumpCard", 2)
-	local jumpLabel = Instance.new("TextLabel")
-	jumpLabel.Size = UDim2.new(0.5, 0, 1, 0)
-	jumpLabel.Position = UDim2.new(0, 10, 0, 0)
-	jumpLabel.BackgroundTransparency = 1
-	jumpLabel.Font = Enum.Font.SourceSansBold
-	jumpLabel.Text = "Infinite Jump:"
-	jumpLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-	jumpLabel.TextSize = 14
-	jumpLabel.TextXAlignment = Enum.TextXAlignment.Left
-	jumpLabel.Parent = jumpCard
-
-	local jumpToggle = Instance.new("TextButton")
-	jumpToggle.Name = "JumpToggle"
-	jumpToggle.Size = UDim2.new(0.38, 0, 0.65, 0)
-	jumpToggle.Position = UDim2.new(0.58, 0, 0.175, 0)
-	jumpToggle.BackgroundColor3 = Color3.fromRGB(150, 35, 35)
-	jumpToggle.Font = Enum.Font.SourceSansBold
-	jumpToggle.Text = "OFF"
-	jumpToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-	jumpToggle.TextSize = 13
-	jumpToggle.Parent = jumpCard
-
-	local toggleCorner = Instance.new("UICorner")
-	toggleCorner.CornerRadius = UDim.new(0, 4)
-	toggleCorner.Parent = jumpToggle
-
 	local infJumpEnabled = false
-	jumpToggle.MouseButton1Click:Connect(function()
-		infJumpEnabled = not infJumpEnabled
-		if infJumpEnabled then
-			jumpToggle.Text = "ON"
-			jumpToggle.BackgroundColor3 = Color3.fromRGB(35, 150, 35)
-		else
-			jumpToggle.Text = "OFF"
-			jumpToggle.BackgroundColor3 = Color3.fromRGB(150, 35, 35)
-		end
-	end)
+	createToggleCard(scroll, "Infinite Jump", false, function(state)
+		infJumpEnabled = state
+	end, 2)
 
 	UserInputService.JumpRequest:Connect(function()
 		if infJumpEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
@@ -365,35 +414,7 @@ local function setupHomeTab(homeFrame)
 		end
 	end)
 
-	-- Character Size Scaling Section
-	local sizeCard = createCard("SizeCard", 3)
-	local sizeLabel = Instance.new("TextLabel")
-	sizeLabel.Size = UDim2.new(0.5, 0, 1, 0)
-	sizeLabel.Position = UDim2.new(0, 10, 0, 0)
-	sizeLabel.BackgroundTransparency = 1
-	sizeLabel.Font = Enum.Font.SourceSansBold
-	sizeLabel.Text = "Character Size Scale:"
-	sizeLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-	sizeLabel.TextSize = 14
-	sizeLabel.TextXAlignment = Enum.TextXAlignment.Left
-	sizeLabel.Parent = sizeCard
-
-	local sizeBox = Instance.new("TextBox")
-	sizeBox.Name = "SizeBox"
-	sizeBox.Size = UDim2.new(0.38, 0, 0.65, 0)
-	sizeBox.Position = UDim2.new(0.58, 0, 0.175, 0)
-	sizeBox.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-	sizeBox.Font = Enum.Font.SourceSansBold
-	sizeBox.PlaceholderText = "1 (Default)"
-	sizeBox.Text = ""
-	sizeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-	sizeBox.TextSize = 13
-	sizeBox.Parent = sizeCard
-
-	local sizeBoxCorner = Instance.new("UICorner")
-	sizeBoxCorner.CornerRadius = UDim.new(0, 4)
-	sizeBoxCorner.Parent = sizeBox
-
+	-- Scale Character Size Section
 	local currentScale = 1
 	local function applyCharacterScale(character, targetScale)
 		if not character or not targetScale then return end
@@ -417,8 +438,8 @@ local function setupHomeTab(homeFrame)
 		end)
 	end
 
-	sizeBox.FocusLost:Connect(function()
-		local num = tonumber(sizeBox.Text)
+	createInputCard("Character Scale", "1 (Default)", 3, function(text)
+		local num = tonumber(text)
 		if num and num > 0 then
 			currentScale = num
 			if LocalPlayer.Character then
@@ -429,14 +450,25 @@ local function setupHomeTab(homeFrame)
 
 	LocalPlayer.CharacterAdded:Connect(function(char)
 		task.wait(0.5)
-		if sizeBox.Text ~= "" and tonumber(sizeBox.Text) then
-			applyCharacterScale(char, currentScale)
-		end
+		applyCharacterScale(char, currentScale)
 	end)
 
-	-- Credits Section
-	local creditsCard = createCard("CreditsCard", 4)
-	creditsCard:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(180, 40, 40)
+	-- Credits Card
+	local creditsCard = Instance.new("Frame")
+	creditsCard.Size = UDim2.new(1, -6, 0, 42)
+	creditsCard.BackgroundColor3 = C_CARD_BG
+	creditsCard.BackgroundTransparency = 0.2
+	creditsCard.LayoutOrder = 4
+	creditsCard.Parent = scroll
+
+	local credCorner = Instance.new("UICorner")
+	credCorner.CornerRadius = UDim.new(0, 6)
+	credCorner.Parent = creditsCard
+
+	local credStroke = Instance.new("UIStroke")
+	credStroke.Color = C_WHITE
+	credStroke.Thickness = 1
+	credStroke.Parent = creditsCard
 
 	local credText = Instance.new("TextLabel")
 	credText.Size = UDim2.new(1, -20, 1, 0)
@@ -444,7 +476,7 @@ local function setupHomeTab(homeFrame)
 	credText.BackgroundTransparency = 1
 	credText.Font = Enum.Font.SourceSansBold
 	credText.Text = "Created by: Rashed Ahmed Alshehhi"
-	credText.TextColor3 = Color3.fromRGB(255, 255, 255)
+	credText.TextColor3 = C_WHITE
 	credText.TextSize = 14
 	credText.TextXAlignment = Enum.TextXAlignment.Center
 	credText.Parent = creditsCard
@@ -452,7 +484,7 @@ end
 
 setupHomeTab(contentFrames["Home"])
 
--- 4. MAIN TAB: Auto Farming Utilities (Weight, Pushups, Situps, Punch, Handstands)
+-- 4. MAIN TAB: Auto Farming & Movement Utilities
 local function setupMainTab(mainFrame)
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Name = "MainScroll"
@@ -460,7 +492,7 @@ local function setupMainTab(mainFrame)
 	scroll.Position = UDim2.new(0, 0, 0, 32)
 	scroll.BackgroundTransparency = 1
 	scroll.ScrollBarThickness = 4
-	scroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
+	scroll.ScrollBarImageColor3 = C_BORDER_DIM
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.Parent = mainFrame
@@ -470,73 +502,21 @@ local function setupMainTab(mainFrame)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = scroll
 
-	local function createFarmToggle(title, genvKey, order)
-		local card = Instance.new("Frame")
-		card.Name = genvKey .. "Card"
-		card.Size = UDim2.new(1, -6, 0, 42)
-		card.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-		card.BackgroundTransparency = 0.3
-		card.LayoutOrder = order
-		card.Parent = scroll
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 6)
-		corner.Parent = card
-
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(45, 45, 45)
-		stroke.Thickness = 1
-		stroke.Parent = card
-
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.new(0.5, 0, 1, 0)
-		label.Position = UDim2.new(0, 10, 0, 0)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.SourceSansBold
-		label.Text = title .. ":"
-		label.TextColor3 = Color3.fromRGB(240, 240, 240)
-		label.TextSize = 14
-		label.TextXAlignment = Enum.TextXAlignment.Left
-		label.Parent = card
-
-		local toggleBtn = Instance.new("TextButton")
-		toggleBtn.Name = genvKey .. "Toggle"
-		toggleBtn.Size = UDim2.new(0.38, 0, 0.65, 0)
-		toggleBtn.Position = UDim2.new(0.58, 0, 0.175, 0)
-		toggleBtn.BackgroundColor3 = getgenv()[genvKey] and Color3.fromRGB(35, 150, 35) or Color3.fromRGB(150, 35, 35)
-		toggleBtn.Font = Enum.Font.SourceSansBold
-		toggleBtn.Text = getgenv()[genvKey] and "ON" or "OFF"
-		toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-		toggleBtn.TextSize = 13
-		toggleBtn.Parent = card
-
-		local toggleCorner = Instance.new("UICorner")
-		toggleCorner.CornerRadius = UDim.new(0, 4)
-		toggleCorner.Parent = toggleBtn
-
-		toggleBtn.MouseButton1Click:Connect(function()
-			getgenv()[genvKey] = not getgenv()[genvKey]
-			if getgenv()[genvKey] then
-				toggleBtn.Text = "ON"
-				toggleBtn.BackgroundColor3 = Color3.fromRGB(35, 150, 35)
-			else
-				toggleBtn.Text = "OFF"
-				toggleBtn.BackgroundColor3 = Color3.fromRGB(150, 35, 35)
-			end
-		end)
-	end
-
-	-- Create Farming Toggles
-	createFarmToggle("Auto Farm Weight", "AutoWeight", 1)
-	createFarmToggle("Auto Farm Pushups", "AutoPushups", 2)
-	createFarmToggle("Auto Farm Situps", "AutoSitups", 3)
-	createFarmToggle("Auto Farm Punch", "AutoPunch", 4)
-	createFarmToggle("Auto Farm Handstands", "AutoHandstands", 5)
+	-- Create Main Toggles
+	createToggleCard(scroll, "Auto Farm Weight", getgenv().AutoWeight, function(state) getgenv().AutoWeight = state end, 1)
+	createToggleCard(scroll, "Auto Farm Pushups", getgenv().AutoPushups, function(state) getgenv().AutoPushups = state end, 2)
+	createToggleCard(scroll, "Auto Farm Situps", getgenv().AutoSitups, function(state) getgenv().AutoSitups = state end, 3)
+	createToggleCard(scroll, "Auto Farm Punch", getgenv().AutoPunch, function(state) getgenv().AutoPunch = state end, 4)
+	createToggleCard(scroll, "Auto Farm Handstands", getgenv().AutoHandstands, function(state) getgenv().AutoHandstands = state end, 5)
+	
+	-- Movement & Positioning Toggles
+	createToggleCard(scroll, "Auto Walk", getgenv().AutoWalk, function(state) getgenv().AutoWalk = state end, 6)
+	createToggleCard(scroll, "Lock Position", getgenv().LockPosition, function(state) getgenv().LockPosition = state end, 7)
 end
 
 setupMainTab(contentFrames["Main"])
 
--- Auto Farm Background Execution Loop
+-- Background Execution Task (Farming Tools)
 task.spawn(function()
 	while task.wait(0.1) do
 		local char = LocalPlayer.Character
@@ -573,6 +553,49 @@ task.spawn(function()
 	end
 end)
 
+-- Background Execution Task (Auto Walk Logic)
+task.spawn(function()
+	local walkDir = 1
+	local timer = 0
+
+	while task.wait(0.1) do
+		if getgenv().AutoWalk and not getgenv().LockPosition then
+			local char = LocalPlayer.Character
+			if char then
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if hum then
+					timer += 0.1
+					if timer >= 2.5 then
+						walkDir *= -1
+						timer = 0
+					end
+					hum:Move(Vector3.new(walkDir, 0, 0), true)
+				end
+			end
+		end
+	end
+end)
+
+-- Lock Position Execution (Bypasses physics forces)
+local lockedCFrame = nil
+
+RunService.Stepped:Connect(function()
+	if getgenv().LockPosition then
+		local char = LocalPlayer.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			local root = char.HumanoidRootPart
+			if not lockedCFrame then
+				lockedCFrame = root.CFrame
+			end
+			root.CFrame = lockedCFrame
+			root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+			root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		end
+	else
+		lockedCFrame = nil
+	end
+end)
+
 -- 5. STATUS TAB
 local function setupStatusTab(statusFrame)
 	local scroll = Instance.new("ScrollingFrame")
@@ -581,7 +604,7 @@ local function setupStatusTab(statusFrame)
 	scroll.Position = UDim2.new(0, 0, 0, 32)
 	scroll.BackgroundTransparency = 1
 	scroll.ScrollBarThickness = 4
-	scroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
+	scroll.ScrollBarImageColor3 = C_BORDER_DIM
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.Parent = statusFrame
@@ -595,8 +618,8 @@ local function setupStatusTab(statusFrame)
 		local card = Instance.new("Frame")
 		card.Name = name
 		card.Size = UDim2.new(1, -6, 0, 26)
-		card.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-		card.BackgroundTransparency = 0.3
+		card.BackgroundColor3 = C_CARD_BG
+		card.BackgroundTransparency = 0.2
 		card.LayoutOrder = order
 		card.Parent = scroll
 
@@ -605,7 +628,7 @@ local function setupStatusTab(statusFrame)
 		corner.Parent = card
 
 		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(45, 45, 45)
+		stroke.Color = C_BORDER_DIM
 		stroke.Thickness = 1
 		stroke.Parent = card
 
@@ -615,7 +638,7 @@ local function setupStatusTab(statusFrame)
 		textLabel.Position = UDim2.new(0, 8, 0, 0)
 		textLabel.BackgroundTransparency = 1
 		textLabel.Font = Enum.Font.SourceSansBold
-		textLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+		textLabel.TextColor3 = C_WHITE
 		textLabel.TextSize = 13
 		textLabel.TextXAlignment = Enum.TextXAlignment.Left
 		textLabel.Text = initialText
@@ -701,7 +724,7 @@ end
 
 setupStatusTab(contentFrames["Status"])
 
--- 6. Universal Dragging Function
+-- 6. Universal Draggable Wrapper
 local function makeDraggable(guiObject)
 	local dragging = false
 	local dragInput, dragStart, startPos
@@ -740,7 +763,7 @@ end
 makeDraggable(MainFrame)
 makeDraggable(ToggleBtn)
 
--- 7. UI Window Controls
+-- 7. UI Controls
 Mini.MouseButton1Click:Connect(function()
 	MainFrame.Visible = false
 	ToggleBtn.Visible = true
