@@ -1,17 +1,12 @@
--- Meme Sea Permanent Money Script with UI
+-- Meme Sea Money Script (Mobile Optimized)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-
 local player = Players.LocalPlayer
 
--- Wait for leaderstats
-local leaderstats = player:WaitForChild("leaderstats")
-local coin = leaderstats:FindFirstChild("Meme Coins") or leaderstats:FindFirstChild("Coins") or leaderstats:FindFirstChild("Cash")
-
-if not coin then
-    warn("Could not find Coin variable!")
-end
+-- Target PlayerData
+local PlayerData = player:WaitForChild("PlayerData")
+local moneyVar = PlayerData:WaitForChild("Money")
+local totalMoneyVar = PlayerData:WaitForChild("Total_Money")
 
 -- --- UI CONFIGURATION ---
 local ScreenGui = Instance.new("ScreenGui")
@@ -21,36 +16,47 @@ ScreenGui.ZIndexBehavior = ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 250, 0, 150)
-MainFrame.Position = UDim2.new(0.5, -125, 0.5, -75)
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.Size = UDim2.new(0, 200, 0, 120) -- Smaller for mobile
+MainFrame.Position = UDim2.new(0.5, -100, 0.1, 10) -- Top center by default
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
+MainFrame.BackgroundTransparency = 0.1
 MainFrame.Parent = ScreenGui
 
--- Header Bar
-local Header = Instance.new("Frame")
-Header.Name = "Header"
-Header.Size = UDim2.new(1, 0, 0, 30)
-Header.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Header.Parent = MainFrame
+-- Drag Handle (Top part of the frame)
+local DragFrame = Instance.new("Frame")
+DragFrame.Name = "DragFrame"
+DragFrame.Size = UDim2.new(1, 0, 0, 25)
+DragFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+DragFrame.Parent = MainFrame
 
-local HeaderLabel = Instance.new("TextLabel")
-HeaderLabel.Name = "HeaderLabel"
-HeaderLabel.Size = UDim2.new(1, 0, 1, 0)
-HeaderLabel.BackgroundTransparency = 1
-HeaderLabel.Text = "Meme Sea Money"
-HeaderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-HeaderLabel.Font = Enum.Font.GothamBold
-HeaderLabel.TextSize = 14
-HeaderLabel.Parent = Header
+local DragLabel = Instance.new("TextLabel")
+DragLabel.Name = "DragLabel"
+DragLabel.Size = UDim2.new(1, 0, 1, 0)
+DragLabel.BackgroundTransparency = 1
+DragLabel.Text = "  Meme Sea Money"
+DragLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+DragLabel.Font = Enum.Font.GothamBold
+DragLabel.TextSize = 14
+DragLabel.Parent = DragFrame
+
+-- Close Button (Right side of header)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Name = "CloseBtn"
+CloseBtn.Size = UDim2.new(0, 30, 0, 25)
+CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 16
+CloseBtn.Parent = DragFrame
 
 -- Content Area
 local Content = Instance.new("Frame")
 Content.Name = "Content"
-Content.Size = UDim2.new(1, -10, 1, -40)
-Content.Position = UDim2.new(0, 5, 0, 35)
+Content.Size = UDim2.new(1, -10, 1, -30)
+Content.Position = UDim2.new(0, 5, 0, 30)
 Content.BackgroundTransparency = 1
 Content.Parent = MainFrame
 
@@ -68,12 +74,12 @@ StatusLabel.Parent = Content
 -- Money Label
 local MoneyLabel = Instance.new("TextLabel")
 MoneyLabel.Name = "MoneyLabel"
-MoneyLabel.Size = UDim2.new(1, 0, 0, 40)
+MoneyLabel.Size = UDim2.new(1, 0, 0, 30)
 MoneyLabel.BackgroundTransparency = 1
-MoneyLabel.Text = "Coins: 0"
+MoneyLabel.Text = "Money: 0"
 MoneyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 MoneyLabel.Font = Enum.Font.GothamBold
-MoneyLabel.TextSize = 16
+MoneyLabel.TextSize = 14
 MoneyLabel.Parent = Content
 
 -- Timer Label
@@ -81,32 +87,52 @@ local TimerLabel = Instance.new("TextLabel")
 TimerLabel.Name = "TimerLabel"
 TimerLabel.Size = UDim2.new(1, 0, 0, 20)
 TimerLabel.BackgroundTransparency = 1
-TimerLabel.Text = "Next update: 5s"
+TimerLabel.Text = "Next: 5s"
 TimerLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
 TimerLabel.Font = Enum.Font.Gotham
-TimerLabel.TextSize = 12
+TimerLabel.TextSize = 11
 TimerLabel.Parent = Content
 
--- Close Button
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Name = "CloseBtn"
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -30, 0, 0)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.TextSize = 14
-CloseBtn.Parent = Header
+-- Mobile Drag Logic
+local dragging = false
+local dragInput
+local dragStart
+local startPos
 
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
+MainFrame.InputChanged:Connect(function(input)
+    if input.InputType == Enum.InputType.Touch then
+        if dragging then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end
 end)
 
--- Hide/Show on Keybind (F8)
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+-- Close Button (Mobile Click)
+CloseBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        ScreenGui:Destroy()
+    end
+end)
+
+-- Hide/Show on Keybind (F8 or Volume Down)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.F8 then
+    if input.KeyCode == Enum.KeyCode.F8 or input.KeyCode == Enum.KeyCode.VolumeDown then
         if ScreenGui.Enabled then
             ScreenGui.Enabled = false
         else
@@ -135,26 +161,19 @@ local updateInterval = 5
 local countdown = updateInterval
 
 while task.wait(1) do
-    if coin then
-        -- Force the value
-        coin.Value = targetValue
-        
-        -- Update UI
-        MoneyLabel.Text = "Coins: " .. formatNumber(coin.Value)
-        TimerLabel.Text = "Next update: " .. countdown .. "s"
-        countdown = countdown - 1
-        
-        if countdown <= 0 then
-            countdown = updateInterval
-        end
-        
-        -- Optional: Try to update DataStore for "permanent" feel
-        pcall(function()
-            local ds = game:GetService("DataStoreService"):GetDataStore("MemeSea_Coin_" .. player.UserId)
-            ds:SetAsync("Balance", coin.Value)
-        end)
-    else
-        StatusLabel.Text = "Status: Waiting for Coins..."
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    if moneyVar then
+        moneyVar.Value = targetValue
+    end
+    if totalMoneyVar then
+        totalMoneyVar.Value = targetValue
+    end
+
+    -- Update UI
+    MoneyLabel.Text = "Money: " .. formatNumber(moneyVar.Value or 0)
+    TimerLabel.Text = "Next: " .. countdown .. "s"
+    countdown = countdown - 1
+    
+    if countdown <= 0 then
+        countdown = updateInterval
     end
 end
